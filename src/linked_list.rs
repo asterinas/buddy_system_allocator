@@ -42,7 +42,7 @@ impl LinkedList {
             false => {
                 // Advance head pointer
                 let item = self.head;
-                self.head = unsafe { *item as *mut usize };
+                self.head = unsafe { ptr::with_exposed_provenance_mut(*item) };
                 Some(item)
             }
         }
@@ -86,7 +86,7 @@ impl<'a> Iterator for Iter<'a> {
             None
         } else {
             let item = self.curr;
-            let next = unsafe { *item as *mut usize };
+            let next = unsafe { ptr::with_exposed_provenance_mut(*item) };
             self.curr = next;
             Some(item)
         }
@@ -134,7 +134,7 @@ impl<'a> Iterator for IterMut<'a> {
                 curr: self.curr,
             };
             self.prev = self.curr;
-            self.curr = unsafe { *self.curr as *mut usize };
+            self.curr = unsafe { ptr::with_exposed_provenance_mut(*self.curr) };
             Some(res)
         }
     }

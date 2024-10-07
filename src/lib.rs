@@ -1,3 +1,4 @@
+#![feature(exposed_provenance)]
 #![no_std]
 
 #[cfg(test)]
@@ -18,7 +19,7 @@ use core::fmt;
 use core::mem::size_of;
 #[cfg(feature = "use_spin")]
 use core::ops::Deref;
-use core::ptr::NonNull;
+use core::ptr::{self, NonNull};
 #[cfg(feature = "use_spin")]
 use spin::Mutex;
 
@@ -91,7 +92,8 @@ impl<const ORDER: usize> Heap<ORDER> {
             let size = min(lowbit, prev_power_of_two(end - current_start));
             total += size;
 
-            self.free_list[size.trailing_zeros() as usize].push(current_start as *mut usize);
+            self.free_list[size.trailing_zeros() as usize]
+                .push(ptr::with_exposed_provenance_mut(current_start));
             current_start += size;
         }
 
@@ -117,8 +119,9 @@ impl<const ORDER: usize> Heap<ORDER> {
                 for j in (class + 1..i + 1).rev() {
                     if let Some(block) = self.free_list[j].pop() {
                         unsafe {
-                            self.free_list[j - 1]
-                                .push((block as usize + (1 << (j - 1))) as *mut usize);
+                            self.free_list[j - 1].push(ptr::with_exposed_provenance_mut(
+                                block as usize + (1 << (j - 1)),
+                            ));
                             self.free_list[j - 1].push(block);
                         }
                     } else {
@@ -176,7 +179,8 @@ impl<const ORDER: usize> Heap<ORDER> {
                     self.free_list[current_class].pop();
                     current_ptr = min(current_ptr, buddy);
                     current_class += 1;
-                    self.free_list[current_class].push(current_ptr as *mut usize);
+                    self.free_list[current_class]
+                        .push(ptr::with_exposed_provenance_mut(current_ptr));
                 } else {
                     break;
                 }
